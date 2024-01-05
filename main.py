@@ -25,9 +25,8 @@ class Game:
     self.joysticks = {}
 
     self.players = [
-      Player(spawnCoords=[0, 0]), 
-      Player(controllerType="keyboard", team=2, spawnCoords=[100, 100]),
-      Player(controllerType="keyboard", team=1, spawnCoords=[-150, 100])
+      Player(controllerType="keyboard", team=1, controllerInfo=[pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT], spawnCoords=[0, 0]), 
+      Player(controllerType="keyboard", team=2, controllerInfo=[pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d], spawnCoords=[100, 100])
       ]
     # self.players = [Player()]
     cameraSize = (
@@ -63,13 +62,13 @@ class Game:
           keys = pygame.key.get_pressed()
           rotationV = 0
           movement = 0
-          if keys[pygame.K_LEFT]:
+          if keys[player.controlScheme[2]]:
             rotationV = -1
-          if keys[pygame.K_RIGHT]:
+          if keys[player.controlScheme[3]]:
             rotationV = 1
-          if keys[pygame.K_UP]:
+          if keys[player.controlScheme[0]]:
             movement = 1
-          if keys[pygame.K_DOWN]:
+          if keys[player.controlScheme[1]]:
             movement = -1
           player.movement += movement
           player.rotationDirection += rotationV

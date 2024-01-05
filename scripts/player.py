@@ -2,15 +2,16 @@ import pygame
 import math
 
 class Player:
-  def __init__(self, spawnCoords=(100, 100), team=1, rotation=0, controllerType="controller", controllerId=0):
+  def __init__(self, spawnCoords=(100, 100), team=1, rotation=0, controllerType="controller", controllerInfo=[0]):
     self.spawnCoords = spawnCoords
     self.position = spawnCoords
     self.team = team
 
     self.controllerType = controllerType
     if controllerType == "controller":
-      self.controllerId = controllerId
-
+      self.controllerId = controllerInfo[0]
+    elif controllerType == "keyboard":
+      self.controlScheme = controllerInfo[:4]
     match team:
       case 1:
         self.colour = (30, 150, 220)
