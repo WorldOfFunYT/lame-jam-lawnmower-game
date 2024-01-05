@@ -18,7 +18,7 @@ class Game:
     self.clock = pygame.time.Clock()
 
     self.cellSize = 20
-    self.gridWidth, self.gridHeight = self.width // self.cellSize, self.height // self.cellSize
+    self.gridWidth, self.gridHeight = 32, 32
     self.grid = [[0] * self.gridWidth for _ in range(self.gridHeight)]
 
     self.joysticks = {}
@@ -39,7 +39,6 @@ class Game:
   def run(self):
     while True:
       self.display.fill((0, 0, 10))
-      
 
       for event in pygame.event.get():
         match event.type:
@@ -95,7 +94,7 @@ class Game:
       renderScrolls = [[0, 0]] * len(self.players)
       
       for i, player in enumerate(self.players):
-        player.update() #Position rotation 
+        player.update(self.gridWidth * self.cellSize, self.gridHeight * self.cellSize) #Position rotation 
 
         team = player.team # Set team colour for grid mapping
         gridX, gridY = int(player.position[0]) // self.cellSize, int(player.position[1]) // self.cellSize
@@ -110,8 +109,8 @@ class Game:
       for i, camera in enumerate(self.cameras):
         
         camera.fill((0, 10, 0))
-        for y in range(self.gridHeight):
-          for x in range(self.gridWidth):
+        for y in range(max(renderScrolls[i][1] // self.cellSize, 0), min((renderScrolls[i][1] + camera.get_height()) // self.cellSize + 1, len(self.grid))):
+          for x in range(max(renderScrolls[i][0] // self.cellSize, 0), min((renderScrolls[i][0] + camera.get_width()) // self.cellSize + 1, len(self.grid[y]))):
             colour = (0, 0, 0)
             if self.grid[y][x] == 1:
               colour = (0, 0, 128)
@@ -121,7 +120,6 @@ class Game:
 
 
         for player in self.players:
-          print(renderScrolls[i])
           player.render(self.cameras[i], renderScrolls[i])
         
         self.display.blit(camera, (self.display.get_width() // 2 if (i + 1) % 2 == 0 else 0, self.display.get_height() // 2 if (i + 1) > 2 else 0))
@@ -129,6 +127,8 @@ class Game:
 
       self.screen.blit(pygame.transform.scale(self.display, self.screen.get_size()), (0, 0))
       pygame.display.update()
+      # print(f'{round(team1Percent, 2)}%-{round(team2Percent, 2)}%') 
+      print(self.clock.get_fps())
       self.clock.tick(60)
 
 Game().run()

@@ -31,7 +31,7 @@ class Player:
   def getCenter(self):
     return (self.position[0] + self.sprite.get_width() / 2, self.position[1] + self.sprite.get_height() / 2)
 
-  def update(self):
+  def update(self, maxX, maxY):
     self.movement *= -1
     self.velocity += self.movement * 0.1
     self.velocity = max(min(self.velocity, 3), -3)
@@ -44,7 +44,17 @@ class Player:
 
     dx = self.speed * math.cos(theta) * self.velocity
     dy = self.speed * math.sin(theta) * self.velocity
-    self.position = (self.position[0] + dx, self.position[1] + dy)
+    self.position[0] = self.position[0] + dx
+    if self.position[0] < 0 + self.sprite.get_width() / 2:
+      self.position[0] = 0 + self.sprite.get_width() / 2
+    if self.position[0] > maxX - self.sprite.get_width() / 2:
+      self.position[0] = maxX - self.sprite.get_width() / 2
+
+    self.position[1] = self.position[1] + dy
+    if self.position[1] < 0 + self.sprite.get_height() / 2:
+      self.position[1] = 0 + self.sprite.get_height() / 2
+    if self.position[1] > maxY - self.sprite.get_height() / 2:
+      self.position[1] = maxY - self.sprite.get_height() / 2
 
     if self.movement == 0:
       if abs(self.velocity) > 0.00001:
