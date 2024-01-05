@@ -2,6 +2,7 @@ import pygame
 import sys
 import math
 
+from scripts.progressBar import Progressbar
 from scripts.player import Player
 from scripts.minimap import Minimap
 
@@ -37,6 +38,7 @@ class Game:
     self.camOffsets = [[0, 0]] * len(self.players)
 
     self.minimap = Minimap(self.grid, (self.display.get_width() / 2, self.display.get_height() / 2))
+    self.progressbar = Progressbar([320, 24], 320, 10)
 
   def run(self):
     while True:
@@ -129,11 +131,15 @@ class Game:
       playerGridCoordinates = [[player.team, (int(player.position[0]) // self.cellSize, int(player.position[1]) // self.cellSize)] for player in self.players]
 
       self.minimap.render(self.display, playerGridCoordinates)
+
+      team1Percent = len([item for row in self.grid for item in row if item == 1]) / (self.gridWidth * self.gridHeight)
+      team2Percent = len([item for row in self.grid for item in row if item == 2]) / (self.gridWidth * self.gridHeight)
+      
+      self.progressbar.render(self.display, team1Percent, team2Percent)
+
       self.screen.blit(pygame.transform.scale(self.display, self.screen.get_size()), (0, 0))
       pygame.display.update()
-      team1Percent = len([item for row in self.grid for item in row if item == 1]) / (self.gridWidth * self.gridHeight) * 100
-      team2Percent = len([item for row in self.grid for item in row if item == 2]) / (self.gridWidth * self.gridHeight) * 100
-      print(f'{round(team1Percent, 2)}%-{round(team2Percent, 2)}%') 
+      print(f'{round(team1Percent * 100, 2)}%-{round(team2Percent * 100, 2)}%') 
       # print(self.clock.get_fps())
       self.clock.tick(60)
 
