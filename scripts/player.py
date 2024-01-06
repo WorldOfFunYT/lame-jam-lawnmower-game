@@ -2,10 +2,12 @@ import pygame
 import math
 
 class Player:
-  def __init__(self, spawnCoords=[100, 100], team=1, rotation=0, controllerType="controller", controllerInfo=[0]):
+  def __init__(self, sprites, spawnCoords=[100, 100], team=1, rotation=0, controllerType="controller", controllerInfo=[0]):
     self.spawnCoords = list(spawnCoords)
     self.position = list(spawnCoords)
     self.team = team
+
+    self.images = sprites
 
     self.controllerType = controllerType
     if controllerType == "controller":
@@ -71,8 +73,8 @@ class Player:
         self.rotationVelocity = 0
     self.rotationDirection = 0
   
-  def render(self, surf, offset=(0, 0)):
-    rotated_surf = pygame.transform.rotate(self.sprite, self.rotation)
-    surf.blit(rotated_surf, (
-      self.position[0] - rotated_surf.get_width() / 2 - offset[0], 
-      self.position[1] - rotated_surf.get_height() / 2 - offset[1]))
+  def render(self, surf, spread=1, offset=(0, 0)):
+    for i, img in enumerate(self.images):
+      rotated_img = pygame.transform.rotate(img, self.rotation)
+      surf.blit(rotated_img, (self.position[0] - rotated_img.get_width() // 2 - offset[0],
+                self.position[1] - rotated_img.get_height() // 2 - i * spread - offset[1]))

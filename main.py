@@ -1,5 +1,6 @@
 import pygame
 import sys
+import os
 import math
 
 from scripts.utils import loadImage
@@ -43,6 +44,8 @@ class Game:
       'controller': loadImage('buttons/controller'),
       'keyboardPressed': loadImage('buttons/keyboardPressed'),
       'controllerPressed': loadImage('buttons/controllerPressed'),
+      'blueLawnmowers': [pygame.transform.scale_by(pygame.transform.rotate(loadImage('lawnmowers/' + img.strip('.png'), (215, 123, 186)), 90), 2) for img in os.listdir('assets/lawnmowers') if 'blue' in img],
+      'redLawnmowers': [pygame.transform.scale_by(pygame.transform.rotate(loadImage('lawnmowers/' + img.strip('.png'), (215, 123, 186)), 90), 2) for img in os.listdir('assets/lawnmowers') if 'red' in img],
     }
 
     pygame.joystick.init()
@@ -79,6 +82,8 @@ class Game:
     selected = 0
     playerControllerIds = []
     allControllerIds = []
+    for key, item in self.joysticks.items():
+      allControllerIds.append(key)
     while True:
       self.display.fill((0, 0, 10))
       for event in pygame.event.get(eventtype=(pygame.JOYDEVICEADDED, pygame.JOYDEVICEREMOVED, pygame.QUIT, pygame.JOYBUTTONDOWN)):
@@ -131,7 +136,7 @@ class Game:
                   players = []
                   for i in range(self.playerCount):
 
-                    players.append(Player(team = i % 2 + 1, 
+                    players.append(Player(sprites=self.assets['blueLawnmowers' if i % 2 + 1 == 1 else 'redLawnmowers'], team = i % 2 + 1, 
                                           controllerType = "keyboard" if playerControllerIds[i] < 0 else "controller", 
                                           controllerInfo=[pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT] if playerControllerIds[i] < 0 else [ allControllerIds[playerControllerIds[i]] ]))
                   self.createPlayers(players)
@@ -230,7 +235,7 @@ class Game:
 
 
             for player in self.players:
-              player.render(self.cameras[i], renderScrolls[i])
+              player.render(surf=self.cameras[i], offset=renderScrolls[i], spread=1)
             
             self.display.blit(camera, (self.display.get_width() // 2 if (i + 1) % 2 == 0 else 0, self.display.get_height() // 2 if (i + 1) > 2 else 0))
 
