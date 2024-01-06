@@ -2,9 +2,9 @@ import pygame
 import math
 
 class Player:
-  def __init__(self, spawnCoords=(100, 100), team=1, rotation=0, controllerType="controller", controllerInfo=[0]):
-    self.spawnCoords = spawnCoords
-    self.position = spawnCoords
+  def __init__(self, spawnCoords=[100, 100], team=1, rotation=0, controllerType="controller", controllerInfo=[0]):
+    self.spawnCoords = list(spawnCoords)
+    self.position = list(spawnCoords)
     self.team = team
 
     self.controllerType = controllerType
