@@ -46,6 +46,7 @@ class Game:
       'controllerPressed': loadImage('buttons/controllerPressed'),
       'blueLawnmowers': [pygame.transform.scale_by(pygame.transform.rotate(loadImage('lawnmowers/' + img.strip('.png'), (215, 123, 186)), 90), 2) for img in os.listdir('assets/lawnmowers') if 'blue' in img],
       'redLawnmowers': [pygame.transform.scale_by(pygame.transform.rotate(loadImage('lawnmowers/' + img.strip('.png'), (215, 123, 186)), 90), 2) for img in os.listdir('assets/lawnmowers') if 'red' in img],
+      'neutralGrass': loadImage('tiles/grass')
     }
 
     pygame.joystick.init()
@@ -229,9 +230,14 @@ class Game:
                 colour = (0, 0, 0)
                 if self.grid[y][x] == 1:
                   colour = (0, 0, 128)
+                  pygame.draw.rect(camera, colour, (x * self.cellSize - renderScrolls[i][0], y * self.cellSize - renderScrolls[i][1], self.cellSize, self.cellSize))
                 if self.grid[y][x] == 2:
                   colour = (128, 0, 0)
-                pygame.draw.rect(camera, colour, (x * self.cellSize - renderScrolls[i][0], y * self.cellSize - renderScrolls[i][1], self.cellSize, self.cellSize))
+                  pygame.draw.rect(camera, colour, (x * self.cellSize - renderScrolls[i][0], y * self.cellSize - renderScrolls[i][1], self.cellSize, self.cellSize))
+                if self.grid[y][x] == 0:
+                  camera.blit(pygame.transform.scale(self.assets['neutralGrass'], (self.cellSize, self.cellSize)), 
+                              (x * self.cellSize - renderScrolls[i][0], 
+                               y * self.cellSize - renderScrolls[i][1], self.cellSize, self.cellSize))
 
 
             for player in self.players:
