@@ -47,8 +47,10 @@ class Game:
 
     pygame.joystick.init()
     self.joysticks = {}
-    # for x in range(pygame.joystick.get_count()):
-      # self.joysticks[x] = pygame.joystick.Joystick(x)
+    for x in range(pygame.joystick.get_count()):
+      joy = pygame.joystick.Joystick(x)
+      joy.init()
+      self.joysticks[joy.get_instance_id()] = joy
 
     self.playerCount = 0
     self.players = [
@@ -79,22 +81,24 @@ class Game:
     allControllerIds = []
     while True:
       self.display.fill((0, 0, 10))
+      for event in pygame.event.get(eventtype=(pygame.JOYDEVICEADDED, pygame.JOYDEVICEREMOVED, pygame.QUIT, pygame.JOYBUTTONDOWN)):
+        if event.type == pygame.JOYDEVICEADDED:
+            joy = pygame.joystick.Joystick(event.device_index)
+            self.joysticks[joy.get_instance_id()] = joy
+            allControllerIds.append(joy.get_instance_id())
+            break
+        if event.type == pygame.JOYDEVICEREMOVED:
+          del self.joysticks[event.instance_id]
+          allControllerIds.remove(event.instance_id)
+          break
+        if event.type == pygame.JOYBUTTONDOWN:
+          print(event)
+        if event.type == pygame.QUIT:
+          pygame.quit()
+          sys.exit()
       match self.currentMenu:
         case 0:        
           for event in pygame.event.get():
-            if event.type == pygame.JOYDEVICEADDED:
-                joy = pygame.joystick.Joystick(event.device_index)
-                self.joysticks[joy.get_instance_id()] = joy
-                allControllerIds.append(joy.get_instance_id())
-                break
-            if event.type == pygame.JOYDEVICEREMOVED:
-              del self.joysticks[event.instance_id]
-              allControllerIds.remove(event.instance_id)
-              break
-            if event.type == pygame.QUIT:
-              pygame.quit()
-              sys.exit()
-            
             if event.type == pygame.KEYDOWN:
               match event.key:
                 case pygame.K_z:
@@ -118,18 +122,8 @@ class Game:
             else:
               self.display.blit(self.assets[f'{i+2}players'], (i * 72, 0))
         case 1:
-          pluggedInControllers = pygame.joystick.get_count()
+          pluggedInControllers = len(self.joysticks)
           for event in pygame.event.get():
-            if event.type == pygame.JOYDEVICEADDED:
-                joy = pygame.joystick.Joystick(event.device_index)
-                self.joysticks[joy.get_instance_id()] = joy
-                break
-            if event.type == pygame.JOYDEVICEREMOVED:
-              del self.joysticks[event.instance_id]
-              break
-            if event.type == pygame.QUIT:
-              pygame.quit()
-              sys.exit()
             if event.type == pygame.KEYDOWN:
               match event.key:
                 case pygame.K_z:
@@ -171,17 +165,6 @@ class Game:
 
 
         case 2:
-          for event in pygame.event.get():
-            match event.type:
-              case pygame.JOYDEVICEADDED:
-                joy = pygame.joystick.Joystick(event.device_index)
-                self.joysticks[joy.get_instance_id()] = joy
-                break
-              case pygame.JOYDEVICEREMOVED:
-                del self.joysticks[event.instance_id]
-                break
-
-          
           for player in self.players:
             if player.controllerType == "keyboard":
               keys = pygame.key.get_pressed()
