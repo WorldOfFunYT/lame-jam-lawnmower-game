@@ -51,12 +51,12 @@ class Game:
       'playersTitle': loadImage('menuSprites/playersTitle', (0, 0, 0))
     }
 
-    self.timer = 60 * 1000 # seconds * 1000
+    self.timer = 1 * 1000 # seconds * 1000
 
     self.fonts = {
       'timer': pygame.font.SysFont('roboto', 20),
-      'bigWinText': pygame.font.SysFont('roboto', 80, bold=True),
-      'smallWinText': pygame.font.SysFont('roboto', 60, bold=True),
+      'bigWinText': pygame.font.SysFont('roboto', 100, bold=True),
+      'smallWinText': pygame.font.SysFont('roboto', 50, bold=True),
       }
     
     self.sounds = {
@@ -65,6 +65,8 @@ class Game:
     }
 
     self.sounds['bomb'].set_volume(0.5)
+
+    self.channels = []
     
 
     pygame.joystick.init()
@@ -84,8 +86,6 @@ class Game:
 
     self.minimap = Minimap(self.grid, (self.display.get_width() / 2, self.display.get_height() / 2))
     self.progressbar = Progressbar([320, 24], 320, 10)
-
-    self.fertBombCooldown = 1000
     self.bombs = []
 
   def regrowGrass(self, coordinate=(0, 0), radius=5):
@@ -99,10 +99,11 @@ class Game:
         if distance(coordinate, (x, y)) <= radius:
           self.grid[y][x] = 0
 
-  def fertilizerBomb(self, playerCoordinates):
+  def fertilizerBomb(self, player):
+    playerCoordinates = player.position
     gridPos = (int(playerCoordinates[0] // self.cellSize), int(playerCoordinates[1] // self.cellSize))
     self.bombs.append(Bomb(gridPos, self.assets['fertilizer']))
-    self.fertBombCooldown = 5000
+    player.fertBombCooldown = 5000
 
   def createPlayers(self, players):
     self.players = players
@@ -114,6 +115,8 @@ class Game:
     self.cameras = [pygame.Surface(cameraSize) for _ in range(self.playerCount)]
 
     self.camOffsets = [[0, 0]] * self.playerCount
+
+    self.channels = [pygame.mixer.Channel(i) for i in range(self.playerCount)]
   def run(self):
 
     selected = 0
@@ -197,7 +200,8 @@ class Game:
                                           controllerInfo=[pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_z] if playerControllerIds[i] < 0 else [ allControllerIds[playerControllerIds[i]] ]))
                     
                   self.createPlayers(players)
-                  self.sounds['motor'].play(loops=-1)
+                  for channel in self.channels:
+                    channel.play(self.sounds['motor'], loops=-1)
                   break
                 case pygame.K_RIGHT:
                   selected = (selected + 1) % self.playerCount
@@ -238,8 +242,8 @@ class Game:
                 movement = 1
               if keys[player.controlScheme[1]]:
                 movement = -1
-              if keys[player.controlScheme[4]] and self.fertBombCooldown <= 0:
-                self.fertilizerBomb(player.position)
+              if keys[player.controlScheme[4]] and player.fertBombCooldown <= 0:
+                self.fertilizerBomb(player)
               player.movement += movement
               player.rotationDirection += rotationV
 
@@ -263,13 +267,13 @@ class Game:
                     player.movement += button
                   if i == 1:
                     player.movement += button * -1
-                  if i == 3 and self.fertBombCooldown <= 0 and button == 1:
+                  if i == 3 and player.fertBombCooldown <= 0 and button == 1:
                     
-                    self.fertilizerBomb(player.position)
+                    self.fertilizerBomb(player)
           renderScrolls = [[0, 0]] * len(self.players)
           
           for i, player in enumerate(self.players):
-            player.update(self.gridWidth * self.cellSize, self.gridHeight * self.cellSize) #Position rotation 
+            player.update(self.gridWidth * self.cellSize, self.gridHeight * self.cellSize, self.clock.get_time()) #Position rotation 
 
             
 
@@ -288,7 +292,8 @@ class Game:
             self.camOffsets[i][1] = player.getCenter()[1] - self.cameras[i].get_height() / 2
             renderScrolls[i] = (int(self.camOffsets[i][0]), int(self.camOffsets[i][1]))
 
-          self.sounds['motor'].set_volume(abs(self.players[0].velocity) / 10)
+            self.channels[i].set_volume(abs(self.players[i].velocity) / 15)
+          # self.sounds['motor'].set_volume(abs(self.players[0].velocity) / 10)
           for bomb in self.bombs:
             if bomb.update(self.clock.get_time()):
               self.regrowGrass(bomb.position, 3)
@@ -329,7 +334,6 @@ class Game:
           self.progressbar.render(self.display, team1Percent, team2Percent)
           self.display.blit(self.fonts['timer'].render(str(self.timer // 1000 + 1), False, (255, 255, 255)), (0, 0))
           self.timer -= self.clock.get_time()
-          self.fertBombCooldown -= self.clock.get_time()
           lastFrame.fill((0, 0, 0))
           lastFrame.blit(self.display, (0, 0))
           if self.timer <= 0:
@@ -338,22 +342,23 @@ class Game:
         case 3: # End screen
           winScreen.fill((0, 0, 0, 128))
 
+          pygame.draw.polygon(winScreen, (160, 10, 10), ((0, 0), (winScreen.get_height(), 0), (0, winScreen.get_height())))
+          pygame.draw.polygon(winScreen, (10, 10, 150), ((winScreen.get_width(), winScreen.get_height()), 
+                                                         (winScreen.get_width() - winScreen.get_height(), winScreen.get_height()), 
+                                                         (winScreen.get_width(), 0)))
+
           if team1Percent > team2Percent:
-            winScreen.fill((160, 10, 10), (int(winScreen.get_width() * 0.68), 0, winScreen.get_width(), winScreen.get_height()))
-            winScreen.fill((10, 10, 150), (0, 0, int(winScreen.get_width() * 0.72), winScreen.get_height()))
 
-            bigWinText = self.fonts['bigWinText'].render(f'{round(team1Percent * 100, 2)}%', False, (255, 255, 255))
-            smallWinText = self.fonts['smallWinText'].render(f'{round(team2Percent * 100, 2)}%', False, (255, 255, 255))
-            winScreen.blit(bigWinText, (int(winScreen.get_width() * 0.6) - bigWinText.get_width(), winScreen.get_height() // 2 - bigWinText.get_height() // 2))
-            winScreen.blit(smallWinText, (int(winScreen.get_width() * 0.8), winScreen.get_height() // 2 - smallWinText.get_height() // 2))
+            bigWinText = pygame.transform.rotate(self.fonts['bigWinText'].render(f'{round(team1Percent * 100, 2)}%', False, (255, 255, 255)), 45)
+            smallWinText = pygame.transform.rotate(self.fonts['smallWinText'].render(f'{round(team2Percent * 100, 2)}%', False, (255, 255, 255)), 45)
+            winScreen.blit(bigWinText, (int(winScreen.get_width() * 0.5) - bigWinText.get_width() // 2, winScreen.get_height() // 2 - bigWinText.get_height() // 2 - 30))
+            winScreen.blit(smallWinText, (int(winScreen.get_width() * 0.5) - 5, winScreen.get_height() // 2 - smallWinText.get_height() // 2 + 20))
           else:
-            winScreen.fill((160, 10, 10), (int(winScreen.get_width() * 0.28), 0, winScreen.get_width(), winScreen.get_height()))
-            winScreen.fill((10, 10, 150), (0, 0, int(winScreen.get_width() * 0.32), winScreen.get_height()))
+            bigWinText = pygame.transform.rotate(self.fonts['bigWinText'].render(f'{round(team2Percent * 100, 2)}%', False, (255, 255, 255)), 45)
+            smallWinText = pygame.transform.rotate(self.fonts['smallWinText'].render(f'{round(team1Percent * 100, 2)}%', False, (255, 255, 255)), 45)
+            winScreen.blit(bigWinText, (int(winScreen.get_width() * 0.5) - bigWinText.get_width() // 2, winScreen.get_height() // 2 - bigWinText.get_height() // 2 - 30))
+            winScreen.blit(smallWinText, (int(winScreen.get_width() * 0.5) - 5, winScreen.get_height() // 2 - smallWinText.get_height() // 2 + 20))
 
-            bigWinText = self.fonts['bigWinText'].render(f'{round(team2Percent * 100, 2)}%', False, (255, 255, 255))
-            smallWinText = self.fonts['smallWinText'].render(f'{round(team1Percent * 100, 2)}%', False, (255, 255, 255))
-            winScreen.blit(smallWinText, (int(winScreen.get_width() * 0.2) - smallWinText.get_width(), winScreen.get_height() // 2 - smallWinText.get_height() // 2))
-            winScreen.blit(bigWinText, (int(winScreen.get_width() * 0.4), winScreen.get_height() // 2 - bigWinText.get_height() // 2))
 
 
           self.display.blit(lastFrame, (0, 0))

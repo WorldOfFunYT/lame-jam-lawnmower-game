@@ -9,6 +9,8 @@ class Player:
 
     self.images = sprites
 
+    self.fertBombCooldown = 5000
+
     self.controllerType = controllerType
     if controllerType == "controller":
       self.controllerId = controllerInfo[0]
@@ -34,7 +36,7 @@ class Player:
   def getCenter(self):
     return (self.position[0] + self.sprite.get_width() / 2, self.position[1] + self.sprite.get_height() / 2)
 
-  def update(self, maxX, maxY):
+  def update(self, maxX, maxY, msPassed):
     self.movement *= -1
     self.velocity += self.movement * 0.1
     self.velocity = max(min(self.velocity, 3), -3)
@@ -72,6 +74,8 @@ class Player:
       else:
         self.rotationVelocity = 0
     self.rotationDirection = 0
+
+    self.fertBombCooldown -= msPassed
   
   def render(self, surf, spread=1, offset=(0, 0)):
     for i, img in enumerate(self.images):
