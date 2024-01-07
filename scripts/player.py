@@ -13,7 +13,7 @@ class Player:
     if controllerType == "controller":
       self.controllerId = controllerInfo[0]
     elif controllerType == "keyboard":
-      self.controlScheme = controllerInfo[:4]
+      self.controlScheme = controllerInfo
     match team:
       case 1:
         self.colour = (30, 150, 220)

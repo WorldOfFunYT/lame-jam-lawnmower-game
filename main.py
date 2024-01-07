@@ -7,6 +7,7 @@ from scripts.utils import loadImage, distance
 from scripts.progressBar import Progressbar
 from scripts.player import Player
 from scripts.minimap import Minimap
+from scripts.fertilizerBomb import Bomb
 
 SCREEN_SIZE_MULT = 2
 
@@ -49,6 +50,7 @@ class Game:
       'neutralGrass': loadImage('tiles/grass'),
       'redGrass': loadImage('tiles/redGrass'),
       'blueGrass': loadImage('tiles/blueGrass'),
+      'fertilizer': loadImage('fertilizer')
     }
 
     self.timer = 60 * 1000 # seconds * 1000
@@ -78,7 +80,8 @@ class Game:
     self.minimap = Minimap(self.grid, (self.display.get_width() / 2, self.display.get_height() / 2))
     self.progressbar = Progressbar([320, 24], 320, 10)
 
-    self.fertBombCooldown = 10000
+    self.fertBombCooldown = 1000
+    self.bombs = []
 
   def regrowGrass(self, coordinate=(0, 0), radius=5):
     minX = max(coordinate[0] - radius, 0)
@@ -90,6 +93,11 @@ class Game:
       for x in range(minX, maxX):
         if distance(coordinate, (x, y)) <= radius:
           self.grid[y][x] = 0
+
+  def fertilizerBomb(self, playerCoordinates):
+    gridPos = (int(playerCoordinates[0] // self.cellSize), int(playerCoordinates[1] // self.cellSize))
+    self.bombs.append(Bomb(gridPos, self.assets['fertilizer']))
+    self.fertBombCooldown = 5000
 
   def createPlayers(self, players):
     self.players = players
@@ -167,9 +175,9 @@ class Game:
 
                     players.append(Player(sprites=self.assets['blueLawnmowers' if i % 2 + 1 == 1 else 'redLawnmowers'], team = i % 2 + 1, 
                                           controllerType = "keyboard" if playerControllerIds[i] < 0 else "controller", 
-                                          controllerInfo=[pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT] if playerControllerIds[i] < 0 else [ allControllerIds[playerControllerIds[i]] ]))
+                                          controllerInfo=[pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_z] if playerControllerIds[i] < 0 else [ allControllerIds[playerControllerIds[i]] ]))
+                    
                   self.createPlayers(players)
-                  print(self.players)
                   break
                 case pygame.K_RIGHT:
                   selected = (selected + 1) % self.playerCount
@@ -210,6 +218,8 @@ class Game:
                 movement = 1
               if keys[player.controlScheme[1]]:
                 movement = -1
+              if keys[player.controlScheme[4]] and self.fertBombCooldown <= 0:
+                self.fertilizerBomb(player.position)
               player.movement += movement
               player.rotationDirection += rotationV
 
@@ -235,9 +245,7 @@ class Game:
                     player.movement += button * -1
                   if i == 3 and self.fertBombCooldown <= 0 and button == 1:
                     
-                    gridX, gridY = int(player.position[0]) // self.cellSize, int(player.position[1]) // self.cellSize
-                    self.regrowGrass((gridX, gridY), 5)
-                    self.fertBombCooldown = 5000
+                    self.fertilizerBomb(player.position)
           renderScrolls = [[0, 0]] * len(self.players)
           
           for i, player in enumerate(self.players):
@@ -258,6 +266,14 @@ class Game:
             self.camOffsets[i][1] = player.getCenter()[1] - self.cameras[i].get_height() / 2
             renderScrolls[i] = (int(self.camOffsets[i][0]), int(self.camOffsets[i][1]))
 
+          for bomb in self.bombs:
+            print(bomb)
+            if bomb.update(self.clock.get_time()):
+              self.regrowGrass(bomb.position, 3)
+              self.bombs.remove(bomb)
+              del bomb
+              
+
           for i, camera in enumerate(self.cameras):
             
             camera.fill((0, 10, 0))
@@ -272,6 +288,8 @@ class Game:
                             (x * self.cellSize - renderScrolls[i][0], 
                              y * self.cellSize - renderScrolls[i][1], self.cellSize, self.cellSize))
 
+            for bomb in self.bombs:
+              bomb.render(camera, offset=renderScrolls[i], tileSize=self.cellSize)
 
             for player in self.players:
               player.render(surf=self.cameras[i], offset=renderScrolls[i], spread=1)
