@@ -35,12 +35,6 @@ class Game:
     self.grid = [[0] * self.gridWidth for _ in range(self.gridHeight)]
 
     self.assets = {
-      '2players': loadImage('buttons/button2'),
-      '3players': loadImage('buttons/button3'),
-      '4players': loadImage('buttons/button4'),
-      '2playersPressed': loadImage('buttons/button2pressed'),
-      '3playersPressed': loadImage('buttons/button3pressed'),
-      '4playersPressed': loadImage('buttons/button4pressed'),
       'keyboard': loadImage('buttons/keyboard'),
       'controller': loadImage('buttons/controller'),
       'keyboardPressed': loadImage('buttons/keyboardPressed'),
@@ -50,7 +44,11 @@ class Game:
       'neutralGrass': loadImage('tiles/grass'),
       'redGrass': loadImage('tiles/redGrass'),
       'blueGrass': loadImage('tiles/blueGrass'),
-      'fertilizer': loadImage('fertilizer')
+      'fertilizer': loadImage('fertilizer'),
+      'menuGrass': loadImage('menuSprites/grassPlatform'),
+      'menuBlueLawnmower': loadImage('menuSprites/blueLawnmower'),
+      'menuRedLawnmower': loadImage('menuSprites/redLawnmower'),
+      'playersTitle': loadImage('menuSprites/playersTitle', (0, 0, 0))
     }
 
     self.timer = 60 * 1000 # seconds * 1000
@@ -116,8 +114,6 @@ class Game:
     self.cameras = [pygame.Surface(cameraSize) for _ in range(self.playerCount)]
 
     self.camOffsets = [[0, 0]] * self.playerCount
-
-    print(self.cameras, self.camOffsets)
   def run(self):
 
     selected = 0
@@ -141,8 +137,6 @@ class Game:
           del self.joysticks[event.instance_id]
           allControllerIds.remove(event.instance_id)
           break
-        if event.type == pygame.JOYBUTTONDOWN:
-          print(event)
         if event.type == pygame.QUIT:
           pygame.quit()
           sys.exit()
@@ -166,11 +160,28 @@ class Game:
                     selected = 2
                   break
           playerCount = selected + 2
-          for i in range(3):
-            if selected == i:
-              self.display.blit(self.assets[f'{i+2}playersPressed'], (i * 72, 0))
+
+          scaledBlueLawnmower = pygame.transform.scale_by(self.assets['menuBlueLawnmower'], 2)
+          scaledRedLawnmower = pygame.transform.scale_by(self.assets['menuRedLawnmower'], 2)
+
+          self.display.blit(pygame.transform.scale_by(self.assets['playersTitle'], 2), (self.display.get_width() // 2 - self.assets['playersTitle'].get_width(), int(self.display.get_height() * 0.3)))
+          self.display.blit(pygame.transform.scale_by(self.assets['menuGrass'], 2), (self.display.get_width() // 2 - self.assets['menuGrass'].get_width(), int(self.display.get_height() * 0.7)))
+          self.display.blit(scaledBlueLawnmower, (self.display.get_width() // 2 - scaledBlueLawnmower.get_width() * 2, int(self.display.get_height() * 0.7) - scaledBlueLawnmower.get_height()))
+          self.display.blit(scaledRedLawnmower, (self.display.get_width() // 2 + scaledRedLawnmower.get_width(), int(self.display.get_height() * 0.7) - scaledRedLawnmower.get_height()))
+          
+          for i in range(2):
+            if selected > i:
+              scaledBlueLawnmower.set_alpha(255)
+              scaledRedLawnmower.set_alpha(255)
             else:
-              self.display.blit(self.assets[f'{i+2}players'], (i * 72, 0))
+              scaledBlueLawnmower.set_alpha(63)
+              scaledRedLawnmower.set_alpha(63)
+
+            if i == 0:
+              self.display.blit(scaledBlueLawnmower, (self.display.get_width() // 2 - scaledBlueLawnmower.get_width() * 4, int(self.display.get_height() * 0.7) - scaledBlueLawnmower.get_height()))
+            else:
+              self.display.blit(scaledRedLawnmower, (self.display.get_width() // 2 + scaledRedLawnmower.get_width() * 3, int(self.display.get_height() * 0.7) - scaledRedLawnmower.get_height()))
+
         case 1:
           pluggedInControllers = len(self.joysticks)
           for event in pygame.event.get():
@@ -198,14 +209,14 @@ class Game:
                 case pygame.K_UP:
                   playerControllerIds[selected] = (playerControllerIds[selected] + 2) % (pluggedInControllers + 1) - 1
                   if playerControllerIds[selected] != -1:
-                    print(self.joysticks)
-                    print(playerControllerIds[selected])
                     self.joysticks[playerControllerIds[selected]].rumble(1, 1, 100)
                   break
                 case pygame.K_DOWN:
                   playerControllerIds[selected] -= 1
                   if playerControllerIds[selected] < -1:
                     playerControllerIds[selected] = pluggedInControllers - 1
+                  if playerControllerIds[selected] != -1:
+                    self.joysticks[playerControllerIds[selected]].rumble(1, 1, 100)
 
           for i, controller in enumerate(playerControllerIds):
             textureName = 'keyboard' if controller == -1 else 'controller'
@@ -279,7 +290,6 @@ class Game:
 
           self.sounds['motor'].set_volume(abs(self.players[0].velocity) / 10)
           for bomb in self.bombs:
-            print(bomb)
             if bomb.update(self.clock.get_time()):
               self.regrowGrass(bomb.position, 3)
               self.bombs.remove(bomb)
@@ -324,6 +334,7 @@ class Game:
           lastFrame.blit(self.display, (0, 0))
           if self.timer <= 0:
             self.currentMenu = 3
+            self.sounds['motor'].stop()
         case 3: # End screen
           winScreen.fill((0, 0, 0, 128))
 
