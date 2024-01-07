@@ -3,7 +3,7 @@ import sys
 import os
 import math
 
-from scripts.utils import loadImage
+from scripts.utils import loadImage, distance
 from scripts.progressBar import Progressbar
 from scripts.player import Player
 from scripts.minimap import Minimap
@@ -68,6 +68,19 @@ class Game:
 
     self.minimap = Minimap(self.grid, (self.display.get_width() / 2, self.display.get_height() / 2))
     self.progressbar = Progressbar([320, 24], 320, 10)
+
+    self.fertBombCooldown = 10000
+
+  def regrowGrass(self, coordinate=(0, 0), radius=5):
+    minX = max(coordinate[0] - radius, 0)
+    maxX = min(coordinate[0] + radius + 1, self.gridWidth - 1)
+    minY = max(coordinate[1] - radius, 0)
+    maxY = min(coordinate[1] + radius + 1, self.gridHeight - 1)
+
+    for y in range(minY, maxY):
+      for x in range(minX, maxX):
+        if distance(coordinate, (x, y)) <= radius:
+          self.grid[y][x] = 0
 
   def createPlayers(self, players):
     self.players = players
@@ -170,8 +183,6 @@ class Game:
               self.display.blit(self.assets[f'{textureName}Pressed'], (i * 72, 0))
             else:
               self.display.blit(self.assets[f'{textureName}'], (i * 72, 0))
-
-
         case 2:
           for player in self.players:
             if player.controllerType == "keyboard":
@@ -209,6 +220,11 @@ class Game:
                     player.movement += button
                   if i == 1:
                     player.movement += button * -1
+                  if i == 3 and self.fertBombCooldown <= 0 and button == 1:
+                    
+                    gridX, gridY = int(player.position[0]) // self.cellSize, int(player.position[1]) // self.cellSize
+                    self.regrowGrass((gridX, gridY), 5)
+                    self.fertBombCooldown = 5000
           renderScrolls = [[0, 0]] * len(self.players)
           
           for i, player in enumerate(self.players):
@@ -253,6 +269,8 @@ class Game:
           
           self.progressbar.render(self.display, team1Percent, team2Percent)
           print(f'{round(team1Percent * 100, 2)}%-{round(team2Percent * 100, 2)}%') 
+
+          self.fertBombCooldown -= self.clock.get_time()
 
       self.screen.blit(pygame.transform.scale(self.display, self.screen.get_size()), (0, 0))
       pygame.display.update()
