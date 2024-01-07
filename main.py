@@ -51,6 +51,15 @@ class Game:
       'blueGrass': loadImage('tiles/blueGrass'),
     }
 
+    self.timer = 60 * 1000 # seconds * 1000
+
+    self.fonts = {
+      'timer': pygame.font.SysFont('roboto', 20),
+      'bigWinText': pygame.font.SysFont('roboto', 80, bold=True),
+      'smallWinText': pygame.font.SysFont('roboto', 60, bold=True),
+      }
+    
+
     pygame.joystick.init()
     self.joysticks = {}
     for x in range(pygame.joystick.get_count()):
@@ -98,9 +107,13 @@ class Game:
     selected = 0
     playerControllerIds = []
     allControllerIds = []
+    lastFrame = pygame.Surface(self.display.get_size())
+    lastFrame.fill((0, 0, 0))
+    winScreen = pygame.Surface(self.display.get_size()).convert_alpha()
     for key, item in self.joysticks.items():
       allControllerIds.append(key)
     while True:
+      
       self.display.fill((0, 0, 10))
       for event in pygame.event.get(eventtype=(pygame.JOYDEVICEADDED, pygame.JOYDEVICEREMOVED, pygame.QUIT, pygame.JOYBUTTONDOWN)):
         if event.type == pygame.JOYDEVICEADDED:
@@ -233,7 +246,12 @@ class Game:
             team = player.team # Set team colour for grid mapping
             gridX, gridY = int(player.position[0]) // self.cellSize, int(player.position[1]) // self.cellSize
             if 0 <= gridX < self.gridWidth and 0 <= gridY < self.gridHeight and self.grid[gridY][gridX] == 0:
-              self.grid[gridY][gridX] = team # Set grid colour
+              if self.grid[gridY][gridX] == team:
+                player.speed = 1.2
+              else:
+                player.speed = 1
+              if self.grid[gridY][gridX] == 0:
+                self.grid[gridY][gridX] = team # Set grid colour
 
             
             self.camOffsets[i][0] = player.getCenter()[0] - self.cameras[i].get_width() / 2 # 
@@ -268,10 +286,39 @@ class Game:
           team2Percent = len([item for row in self.grid for item in row if item == 2]) / (self.gridWidth * self.gridHeight)
           
           self.progressbar.render(self.display, team1Percent, team2Percent)
-          print(f'{round(team1Percent * 100, 2)}%-{round(team2Percent * 100, 2)}%') 
-
+          self.display.blit(self.fonts['timer'].render(str(self.timer // 1000 + 1), False, (255, 255, 255)), (0, 0))
+          print(f'{round(team1Percent * 100, 2)}%-{round(team2Percent * 100, 2)}%')
+          self.timer -= self.clock.get_time()
           self.fertBombCooldown -= self.clock.get_time()
+          lastFrame.fill((0, 0, 0))
+          lastFrame.blit(self.display, (0, 0))
+          if self.timer <= 0:
+            self.currentMenu = 3
+        case 3: # End screen
+          winScreen.fill((0, 0, 0, 128))
 
+          if team1Percent > team2Percent:
+            winScreen.fill((160, 10, 10), (int(winScreen.get_width() * 0.68), 0, winScreen.get_width(), winScreen.get_height()))
+            winScreen.fill((10, 10, 150), (0, 0, int(winScreen.get_width() * 0.72), winScreen.get_height()))
+
+            bigWinText = self.fonts['bigWinText'].render(f'{round(team1Percent * 100, 2)}%', False, (255, 255, 255))
+            smallWinText = self.fonts['smallWinText'].render(f'{round(team2Percent * 100, 2)}%', False, (255, 255, 255))
+            winScreen.blit(bigWinText, (int(winScreen.get_width() * 0.6) - bigWinText.get_width(), winScreen.get_height() // 2 - bigWinText.get_height() // 2))
+            winScreen.blit(smallWinText, (int(winScreen.get_width() * 0.8), winScreen.get_height() // 2 - smallWinText.get_height() // 2))
+          else:
+            winScreen.fill((160, 10, 10), (int(winScreen.get_width() * 0.28), 0, winScreen.get_width(), winScreen.get_height()))
+            winScreen.fill((10, 10, 150), (0, 0, int(winScreen.get_width() * 0.32), winScreen.get_height()))
+
+            bigWinText = self.fonts['bigWinText'].render(f'{round(team2Percent * 100, 2)}%', False, (255, 255, 255))
+            smallWinText = self.fonts['smallWinText'].render(f'{round(team1Percent * 100, 2)}%', False, (255, 255, 255))
+            winScreen.blit(smallWinText, (int(winScreen.get_width() * 0.2) - smallWinText.get_width(), winScreen.get_height() // 2 - smallWinText.get_height() // 2))
+            winScreen.blit(bigWinText, (int(winScreen.get_width() * 0.4), winScreen.get_height() // 2 - bigWinText.get_height() // 2))
+
+
+          self.display.blit(lastFrame, (0, 0))
+          self.display.blit(winScreen, (0, 0))
+
+      
       self.screen.blit(pygame.transform.scale(self.display, self.screen.get_size()), (0, 0))
       pygame.display.update()
       # print(self.clock.get_fps())
