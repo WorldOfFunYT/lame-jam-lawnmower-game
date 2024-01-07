@@ -51,7 +51,7 @@ class Game:
       'playersTitle': loadImage('menuSprites/playersTitle', (0, 0, 0))
     }
 
-    self.timer = 1 * 1000 # seconds * 1000
+    self.timer = 3 * 60 * 1000 # seconds * 1000
 
     self.fonts = {
       'timer': pygame.font.SysFont('roboto', 20),
@@ -250,14 +250,21 @@ class Game:
           for joystick in self.joysticks.values():
             jid = joystick.get_instance_id()
 
-            for i in range(joystick.get_numaxes()):
-              axis = joystick.get_axis(i)
+            for player in self.players:
+              axis = joystick.get_axis(0)
+              
               if abs(axis) <= 0.1:
                 axis = 0
+              if player.controllerType == "controller" and player.controllerId == jid:
+                player.rotationDirection = axis
+            for i in range(joystick.get_numhats()):
+              hat = joystick.get_hat(i)[0]
+              if abs(hat) <= 0.1:
+                hat = 0
               if i == 0:
                 for player in self.players:
-                  if player.controllerType == "controller" and player.controllerId == jid:
-                    player.rotationDirection = axis
+                  if player.controllerType == "controller" and player.controllerId == jid and hat != 0:
+                    player.rotationDirection = hat
           
             for i in range(joystick.get_numbuttons()):
               button = joystick.get_button(i)
@@ -320,10 +327,13 @@ class Game:
               bomb.render(camera, offset=renderScrolls[i], tileSize=self.cellSize)
 
             for player in self.players:
-              player.render(surf=self.cameras[i], offset=renderScrolls[i], spread=1)
+              player.render(surf=camera, offset=renderScrolls[i], spread=1)
+            
             
             self.display.blit(camera, (self.display.get_width() // 2 if (i + 1) % 2 == 0 else 0, self.display.get_height() // 2 if (i + 1) > 2 else 0))
 
+          lastFrame.fill((0, 0, 0))
+          lastFrame.blit(self.display, (0, 0))
           playerGridCoordinates = [[player.team, (int(player.position[0]) // self.cellSize, int(player.position[1]) // self.cellSize)] for player in self.players]
 
           self.minimap.render(self.display, playerGridCoordinates)
@@ -334,30 +344,28 @@ class Game:
           self.progressbar.render(self.display, team1Percent, team2Percent)
           self.display.blit(self.fonts['timer'].render(str(self.timer // 1000 + 1), False, (255, 255, 255)), (0, 0))
           self.timer -= self.clock.get_time()
-          lastFrame.fill((0, 0, 0))
-          lastFrame.blit(self.display, (0, 0))
           if self.timer <= 0:
             self.currentMenu = 3
             self.sounds['motor'].stop()
         case 3: # End screen
-          winScreen.fill((0, 0, 0, 128))
+          winScreen.fill((0, 0, 0, 191))
 
-          pygame.draw.polygon(winScreen, (160, 10, 10), ((0, 0), (winScreen.get_height(), 0), (0, winScreen.get_height())))
-          pygame.draw.polygon(winScreen, (10, 10, 150), ((winScreen.get_width(), winScreen.get_height()), 
+          pygame.draw.polygon(winScreen, (10, 10, 150), ((0, 0), (winScreen.get_height(), 0), (0, winScreen.get_height())))
+          pygame.draw.polygon(winScreen, (160, 10, 10), ((winScreen.get_width(), winScreen.get_height()), 
                                                          (winScreen.get_width() - winScreen.get_height(), winScreen.get_height()), 
                                                          (winScreen.get_width(), 0)))
 
+          blueText, redText = (157, 198, 255), (255, 166, 166)
           if team1Percent > team2Percent:
-
-            bigWinText = pygame.transform.rotate(self.fonts['bigWinText'].render(f'{round(team1Percent * 100, 2)}%', False, (255, 255, 255)), 45)
-            smallWinText = pygame.transform.rotate(self.fonts['smallWinText'].render(f'{round(team2Percent * 100, 2)}%', False, (255, 255, 255)), 45)
-            winScreen.blit(bigWinText, (int(winScreen.get_width() * 0.5) - bigWinText.get_width() // 2, winScreen.get_height() // 2 - bigWinText.get_height() // 2 - 30))
-            winScreen.blit(smallWinText, (int(winScreen.get_width() * 0.5) - 5, winScreen.get_height() // 2 - smallWinText.get_height() // 2 + 20))
+            bigWinText = pygame.transform.rotate(self.fonts['bigWinText'].render(f'{round(team1Percent * 100, 2)}%', False, blueText), 45)
+            smallWinText = pygame.transform.rotate(self.fonts['smallWinText'].render(f'{round(team2Percent * 100, 2)}%', False, redText), 45)
+            winScreen.blit(bigWinText, (winScreen.get_width() // 2 - bigWinText.get_width() // 2 - 15, winScreen.get_height() // 2 - bigWinText.get_height() // 2 - 10))
+            winScreen.blit(smallWinText, (winScreen.get_width() // 2 - smallWinText.get_width() // 2 + 25, winScreen.get_height() // 2 - smallWinText.get_height() // 2 + 20))
           else:
-            bigWinText = pygame.transform.rotate(self.fonts['bigWinText'].render(f'{round(team2Percent * 100, 2)}%', False, (255, 255, 255)), 45)
-            smallWinText = pygame.transform.rotate(self.fonts['smallWinText'].render(f'{round(team1Percent * 100, 2)}%', False, (255, 255, 255)), 45)
-            winScreen.blit(bigWinText, (int(winScreen.get_width() * 0.5) - bigWinText.get_width() // 2, winScreen.get_height() // 2 - bigWinText.get_height() // 2 - 30))
-            winScreen.blit(smallWinText, (int(winScreen.get_width() * 0.5) - 5, winScreen.get_height() // 2 - smallWinText.get_height() // 2 + 20))
+            bigWinText = pygame.transform.rotate(self.fonts['bigWinText'].render(f'{round(team2Percent * 100, 2)}%', False, redText), 45)
+            smallWinText = pygame.transform.rotate(self.fonts['smallWinText'].render(f'{round(team1Percent * 100, 2)}%', False, blueText), 45)
+            winScreen.blit(smallWinText, (winScreen.get_width() // 2 - smallWinText.get_width() // 2 - 25, winScreen.get_height() // 2 - smallWinText.get_height() // 2 - 20))
+            winScreen.blit(bigWinText, (winScreen.get_width() // 2 - bigWinText.get_width() // 2 + 20, winScreen.get_height() // 2 - bigWinText.get_height() // 2 + 15))
 
 
 

@@ -41,7 +41,7 @@ class Player:
     self.velocity += self.movement * 0.1
     self.velocity = max(min(self.velocity, 3), -3)
 
-    self.rotationVelocity += self.rotationDirection * 0.1 * abs(self.velocity / 3)
+    self.rotationVelocity += self.rotationDirection * 0.1
     self.rotationVelocity = max(min(self.rotationVelocity, 4), -4)
     self.rotation -= self.rotationVelocity * 2
 
