@@ -61,6 +61,13 @@ class Game:
       'smallWinText': pygame.font.SysFont('roboto', 60, bold=True),
       }
     
+    self.sounds = {
+      'motor': pygame.mixer.Sound('assets/audio/sfx/motor.ogg'),
+      'bomb': pygame.mixer.Sound('assets/audio/sfx/explosion.ogg')
+    }
+
+    self.sounds['bomb'].set_volume(0.5)
+    
 
     pygame.joystick.init()
     self.joysticks = {}
@@ -112,6 +119,7 @@ class Game:
 
     print(self.cameras, self.camOffsets)
   def run(self):
+
     selected = 0
     playerControllerIds = []
     allControllerIds = []
@@ -178,6 +186,7 @@ class Game:
                                           controllerInfo=[pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_z] if playerControllerIds[i] < 0 else [ allControllerIds[playerControllerIds[i]] ]))
                     
                   self.createPlayers(players)
+                  self.sounds['motor'].play(loops=-1)
                   break
                 case pygame.K_RIGHT:
                   selected = (selected + 1) % self.playerCount
@@ -251,6 +260,8 @@ class Game:
           for i, player in enumerate(self.players):
             player.update(self.gridWidth * self.cellSize, self.gridHeight * self.cellSize) #Position rotation 
 
+            
+
             team = player.team # Set team colour for grid mapping
             gridX, gridY = int(player.position[0]) // self.cellSize, int(player.position[1]) // self.cellSize
             if 0 <= gridX < self.gridWidth and 0 <= gridY < self.gridHeight and self.grid[gridY][gridX] == 0:
@@ -266,11 +277,13 @@ class Game:
             self.camOffsets[i][1] = player.getCenter()[1] - self.cameras[i].get_height() / 2
             renderScrolls[i] = (int(self.camOffsets[i][0]), int(self.camOffsets[i][1]))
 
+          self.sounds['motor'].set_volume(abs(self.players[0].velocity) / 10)
           for bomb in self.bombs:
             print(bomb)
             if bomb.update(self.clock.get_time()):
               self.regrowGrass(bomb.position, 3)
               self.bombs.remove(bomb)
+              self.sounds['bomb'].play()
               del bomb
               
 
