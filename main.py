@@ -287,7 +287,6 @@ class Game:
           
           self.progressbar.render(self.display, team1Percent, team2Percent)
           self.display.blit(self.fonts['timer'].render(str(self.timer // 1000 + 1), False, (255, 255, 255)), (0, 0))
-          print(f'{round(team1Percent * 100, 2)}%-{round(team2Percent * 100, 2)}%')
           self.timer -= self.clock.get_time()
           self.fertBombCooldown -= self.clock.get_time()
           lastFrame.fill((0, 0, 0))
