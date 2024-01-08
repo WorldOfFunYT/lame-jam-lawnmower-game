@@ -3,7 +3,7 @@ import sys
 import os
 import math
 
-from scripts.utils import loadImage, distance
+from scripts.utils import loadImage, distance, lerp, easeOutExpo
 from scripts.progressBar import Progressbar
 from scripts.player import Player
 from scripts.minimap import Minimap
@@ -119,6 +119,10 @@ class Game:
     self.channels = [pygame.mixer.Channel(i) for i in range(self.playerCount)]
   def run(self):
 
+    moved = False
+
+    animFrames = 0
+
     selected = 0
     playerControllerIds = []
     allControllerIds = []
@@ -146,9 +150,38 @@ class Game:
       match self.currentMenu:
         case 0:        
           for event in pygame.event.get():
+            if event.type == pygame.JOYAXISMOTION and event.axis == 0:
+              if event.value >= 0.5:
+                if not moved:
+                  selected = (selected + 1) % 3
+                  moved = True
+              elif event.value <= -0.5:
+                if not moved:
+                  selected -= 1
+                  if selected < 0:
+                    selected = 2
+                  moved = True
+              else:
+                moved = False
+
+            if event.type == pygame.JOYHATMOTION:
+              if event.value[0] == -1:
+                selected -= 1
+                if selected < 0:
+                  selected = 2
+              elif event.value[0] == 1:
+                selected = (selected + 1) % 3
+            if event.type == pygame.JOYBUTTONUP:
+              if event.button == 0:
+                animFrames = 0
+                self.currentMenu = 1
+                self.playerCount = playerCount
+                playerControllerIds = [-1] * self.playerCount
+                selected = 0
             if event.type == pygame.KEYDOWN:
               match event.key:
                 case pygame.K_z:
+                  animFrames = 0
                   self.currentMenu = 1
                   self.playerCount = playerCount
                   playerControllerIds = [-1] * self.playerCount
@@ -164,13 +197,16 @@ class Game:
                   break
           playerCount = selected + 2
 
+          offset = (easeOutExpo(animFrames / 1000) * -1 + 1) * 20
+          print(offset)
+
           scaledBlueLawnmower = pygame.transform.scale_by(self.assets['menuBlueLawnmower'], 2)
           scaledRedLawnmower = pygame.transform.scale_by(self.assets['menuRedLawnmower'], 2)
 
           self.display.blit(pygame.transform.scale_by(self.assets['playersTitle'], 2), (self.display.get_width() // 2 - self.assets['playersTitle'].get_width(), int(self.display.get_height() * 0.3)))
           self.display.blit(pygame.transform.scale_by(self.assets['menuGrass'], 2), (self.display.get_width() // 2 - self.assets['menuGrass'].get_width(), int(self.display.get_height() * 0.7)))
-          self.display.blit(scaledBlueLawnmower, (self.display.get_width() // 2 - scaledBlueLawnmower.get_width() * 2, int(self.display.get_height() * 0.7) - scaledBlueLawnmower.get_height()))
-          self.display.blit(scaledRedLawnmower, (self.display.get_width() // 2 + scaledRedLawnmower.get_width(), int(self.display.get_height() * 0.7) - scaledRedLawnmower.get_height()))
+          self.display.blit(scaledBlueLawnmower, (self.display.get_width() // 2 - scaledBlueLawnmower.get_width() * 2, int(self.display.get_height() * 0.7) - scaledBlueLawnmower.get_height() - offset))
+          self.display.blit(scaledRedLawnmower, (self.display.get_width() // 2 + scaledRedLawnmower.get_width(), int(self.display.get_height() * 0.7) - scaledRedLawnmower.get_height() - offset))
           
           for i in range(2):
             if selected > i:
@@ -181,9 +217,9 @@ class Game:
               scaledRedLawnmower.set_alpha(63)
 
             if i == 0:
-              self.display.blit(scaledBlueLawnmower, (self.display.get_width() // 2 - scaledBlueLawnmower.get_width() * 4, int(self.display.get_height() * 0.7) - scaledBlueLawnmower.get_height()))
+              self.display.blit(scaledBlueLawnmower, (self.display.get_width() // 2 - scaledBlueLawnmower.get_width() * 4, int(self.display.get_height() * 0.7) - scaledBlueLawnmower.get_height() - offset))
             else:
-              self.display.blit(scaledRedLawnmower, (self.display.get_width() // 2 + scaledRedLawnmower.get_width() * 3, int(self.display.get_height() * 0.7) - scaledRedLawnmower.get_height()))
+              self.display.blit(scaledRedLawnmower, (self.display.get_width() // 2 + scaledRedLawnmower.get_width() * 3, int(self.display.get_height() * 0.7) - scaledRedLawnmower.get_height() - offset))
 
         case 1:
           pluggedInControllers = len(self.joysticks)
@@ -221,6 +257,21 @@ class Game:
                     playerControllerIds[selected] = pluggedInControllers - 1
                   if playerControllerIds[selected] != -1:
                     self.joysticks[playerControllerIds[selected]].rumble(1, 1, 100)
+
+          oldY = int(self.display.get_height() * 0.7) - scaledBlueLawnmower.get_height()
+          newY = self.display.get_height() // 2 - scaledBlueLawnmower.get_height() // 2
+          offset = lerp(oldY, newY, easeOutExpo(animFrames / 1000))
+
+          scaledBlueLawnmower.set_alpha(255)
+          scaledRedLawnmower.set_alpha(255)
+
+          self.display.blit(scaledBlueLawnmower, (self.display.get_width() // 2 - scaledBlueLawnmower.get_width() * 2, offset))
+          self.display.blit(scaledRedLawnmower, (self.display.get_width() // 2 + scaledRedLawnmower.get_width(), offset))
+
+          if self.playerCount > 2:
+            self.display.blit(scaledBlueLawnmower, (self.display.get_width() // 2 - scaledBlueLawnmower.get_width() * 4, offset))
+          if self.playerCount > 3:
+            self.display.blit(scaledRedLawnmower, (self.display.get_width() // 2 + scaledRedLawnmower.get_width() * 3, offset))
 
           for i, controller in enumerate(playerControllerIds):
             textureName = 'keyboard' if controller == -1 else 'controller'
@@ -376,6 +427,7 @@ class Game:
       self.screen.blit(pygame.transform.scale(self.display, self.screen.get_size()), (0, 0))
       pygame.display.update()
       # print(self.clock.get_fps())
+      animFrames += self.clock.get_time()
       self.clock.tick(60)
 
 Game().run()

@@ -12,3 +12,10 @@ def distance(coord1, coord2):
   dy = coord2[1] - coord1[1]
 
   return abs(math.sqrt(dx ** 2 + dy ** 2))
+
+def lerp(num1, num2, poi=0.5):
+  distance = num2 - num1
+  return num1 + distance * poi
+
+def easeOutExpo(time=0):
+  return 1 if time >= 1 else 1 - 2**(time * -10)
