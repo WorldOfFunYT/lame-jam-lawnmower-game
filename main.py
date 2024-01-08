@@ -26,6 +26,7 @@ class Game:
     self.currentMenu = 0
 
     self.screen = pygame.display.set_mode((self.width * SCREEN_SIZE_MULT, self.height * SCREEN_SIZE_MULT))
+    pygame.display
     self.display = pygame.Surface((self.width, self.height))
 
     self.clock = pygame.time.Clock()
@@ -48,8 +49,12 @@ class Game:
       'menuGrass': loadImage('menuSprites/grassPlatform'),
       'menuBlueLawnmower': loadImage('menuSprites/blueLawnmower'),
       'menuRedLawnmower': loadImage('menuSprites/redLawnmower'),
-      'playersTitle': loadImage('menuSprites/playersTitle', (0, 0, 0))
+      'playersTitle': loadImage('menuSprites/playersTitle', (0, 0, 0)),
+      'tooltipNext': loadImage('menuSprites/next', (0, 0, 0))
     }
+
+    pygame.display.set_icon(self.assets['menuRedLawnmower'])
+    pygame.display.set_caption('Lawnmowing Lunacy')
 
 
     self.timer = 3 * 60 * 1000 # seconds * 1000
@@ -127,8 +132,6 @@ class Game:
     selected = 0
     playerControllerIds = []
     allControllerIds = []
-    lastFrame = pygame.Surface(self.display.get_size())
-    lastFrame.fill((0, 0, 0))
     winScreen = pygame.Surface(self.display.get_size()).convert_alpha()
     for key, item in self.joysticks.items():
       allControllerIds.append(key)
@@ -225,6 +228,82 @@ class Game:
         case 1:
           pluggedInControllers = len(self.joysticks)
           for event in pygame.event.get():
+            if event.type == pygame.JOYAXISMOTION:
+              if event.axis == 0:
+                if event.value <= -0.5:
+                  if not moved:
+                    selected -=  1
+                    if selected < 0:
+                      selected = self.playerCount - 1
+                    moved = True
+                elif event.value >= 0.5:
+                  if not moved:
+                    selected = (selected + 1) % self.playerCount
+                    moved = True
+                else:
+                  moved = False
+              elif event.axis == 1:
+                if event.value <= -0.5:
+                  if not moved:
+                    playerControllerIds[selected] = (playerControllerIds[selected] + 2) % (pluggedInControllers + 1) - 1
+                    if playerControllerIds[selected] != -1:
+                      self.joysticks[playerControllerIds[selected]].rumble(1, 1, 100)
+                    moved = True
+                elif event.value >= 0.5:
+                  if not moved:
+                    playerControllerIds[selected] -= 1
+                    if playerControllerIds[selected] < -1:
+                      playerControllerIds[selected] = pluggedInControllers - 1
+                      if playerControllerIds[selected] != -1:
+                        self.joysticks[playerControllerIds[selected]].rumble(1, 1, 100)
+                    moved = True
+                else:
+                  moved = False
+            if event.type == pygame.JOYBUTTONUP:
+              if event.button == 0:
+                self.currentMenu = 2
+                players = []
+                if self.playerCount <=2:
+                  for i in range(self.playerCount):
+                    players.append(Player(sprites=self.assets['blueLawnmowers' if i % 2 + 1 == 1 else 'redLawnmowers'], team = i % 2 + 1, 
+                                          controllerType = "keyboard" if playerControllerIds[i] < 0 else "controller", 
+                                          controllerInfo=[pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_z] if playerControllerIds[i] < 0 else [ allControllerIds[playerControllerIds[i]] ]))
+                else:
+                  for i in range(self.playerCount):
+                    if i == 0:
+                      newTeam = 1
+                      newSprites = self.assets['blueLawnmowers']
+                      newControllerType = 'keyboard' if playerControllerIds[1] < 0 else "controller"
+                      newPos = [100, 100]
+                      newRotation = 225
+                      newControllerInfo = [pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_z] if playerControllerIds[1] < 0 else [ allControllerIds[playerControllerIds[1]] ]
+                    elif i == 1:
+                      newTeam = 1
+                      newSprites = self.assets['blueLawnmowers']
+                      newControllerType = 'keyboard' if playerControllerIds[0] < 0 else "controller"
+                      newPos = [100, self.cellSize * self.gridHeight - 100]
+                      newRotation = 145
+                      newControllerInfo = [pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_z] if playerControllerIds[0] < 0 else [ allControllerIds[playerControllerIds[0]] ]
+                    elif i == 2:
+                      newTeam = 2
+                      newSprites = self.assets['redLawnmowers']
+                      newControllerType = 'keyboard' if playerControllerIds[i] < 0 else "controller"
+                      newPos = [self.cellSize * self.gridWidth - 100, 100]
+                      newRotation = 315
+                      newControllerInfo = [pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_z] if playerControllerIds[i] < 0 else [ allControllerIds[playerControllerIds[i]] ]
+                    elif i == 3:
+                      newTeam = 2
+                      newSprites = self.assets['redLawnmowers']
+                      newControllerType = 'keyboard' if playerControllerIds[i] < 0 else "controller"
+                      newPos = [self.cellSize * self.gridWidth - 100, self.cellSize * self.gridHeight - 100]
+                      newRotation = 45
+                      newControllerInfo = [pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_z] if playerControllerIds[i] < 0 else [ allControllerIds[playerControllerIds[i]] ]
+                    
+                    players.append(Player(newSprites, team=newTeam, controllerType=newControllerType, controllerInfo=newControllerInfo, spawnCoords=newPos, rotation=newRotation))
+                self.createPlayers(players)
+                for channel in self.channels:
+                  channel.play(self.sounds['motor'], loops=-1)
+
             if event.type == pygame.KEYDOWN:
               match event.key:
                 case pygame.K_z:
@@ -373,7 +452,7 @@ class Game:
                 self.grid[gridY][gridX] = player.team # Set grid colour
 
             
-            self.camOffsets[i][0] = player.getCenter()[0] - self.cameras[i].get_width() / 2 # 
+            self.camOffsets[i][0] = player.getCenter()[0] - self.cameras[i].get_width() / 2 
             self.camOffsets[i][1] = player.getCenter()[1] - self.cameras[i].get_height() / 2
             renderScrolls[i] = (int(self.camOffsets[i][0]), int(self.camOffsets[i][1]))
 
@@ -390,8 +469,8 @@ class Game:
           for i, camera in enumerate(self.cameras):
             
             camera.fill((0, 10, 0))
-            for y in range(max(renderScrolls[i][1] // self.cellSize, 0), min((renderScrolls[i][1] + camera.get_height()) // self.cellSize + 1, len(self.grid))):
-              for x in range(max(renderScrolls[i][0] // self.cellSize, 0), min((renderScrolls[i][0] + camera.get_width()) // self.cellSize + 1, len(self.grid[y]))):
+            for y in range(max(renderScrolls[i][1] // self.cellSize, 0), min((renderScrolls[i][1] + camera.get_height()) // self.cellSize + 1, self.gridHeight)):
+              for x in range(max(renderScrolls[i][0] // self.cellSize, 0), min((renderScrolls[i][0] + camera.get_width()) // self.cellSize + 1, self.gridWidth)):
                 asset = "neutralGrass"
                 if self.grid[y][x] == 1:
                   asset = "blueGrass"
@@ -399,7 +478,7 @@ class Game:
                   asset = "redGrass"
                 camera.blit(self.assets[asset], 
                             (x * self.cellSize - renderScrolls[i][0], 
-                             y * self.cellSize - renderScrolls[i][1], self.cellSize, self.cellSize))
+                             y * self.cellSize - renderScrolls[i][1]))
 
             for bomb in self.bombs:
               bomb.render(camera, offset=renderScrolls[i], tileSize=self.cellSize)
@@ -409,9 +488,8 @@ class Game:
             
             
             self.display.blit(camera, (self.display.get_width() // 2 if (i + 1) % 2 == 0 else 0, self.display.get_height() // 2 if (i + 1) > 2 else 0))
+            pass
 
-          lastFrame.fill((0, 0, 0))
-          lastFrame.blit(self.display, (0, 0))
           playerGridCoordinates = [[player.team, (int(player.position[0]) // self.cellSize, int(player.position[1]) // self.cellSize)] for player in self.players]
 
           self.minimap.render(self.display, playerGridCoordinates)
@@ -426,7 +504,7 @@ class Game:
             self.currentMenu = 3
             self.sounds['motor'].stop()
         case 3: # End screen
-          winScreen.fill((0, 0, 0, 191))
+          winScreen.fill((0, 0, 0, 255))
 
           pygame.draw.polygon(winScreen, (10, 10, 150), ((0, 0), (winScreen.get_height(), 0), (0, winScreen.get_height())))
           pygame.draw.polygon(winScreen, (160, 10, 10), ((winScreen.get_width(), winScreen.get_height()), 
@@ -444,16 +522,12 @@ class Game:
             smallWinText = pygame.transform.rotate(self.fonts['smallWinText'].render(f'{round(team1Percent * 100, 2)}%', False, blueText), 45)
             winScreen.blit(smallWinText, (winScreen.get_width() // 2 - smallWinText.get_width() // 2 - 25, winScreen.get_height() // 2 - smallWinText.get_height() // 2 - 20))
             winScreen.blit(bigWinText, (winScreen.get_width() // 2 - bigWinText.get_width() // 2 + 20, winScreen.get_height() // 2 - bigWinText.get_height() // 2 + 15))
-
-
-
-          self.display.blit(lastFrame, (0, 0))
           self.display.blit(winScreen, (0, 0))
 
       
       self.screen.blit(pygame.transform.scale(self.display, self.screen.get_size()), (0, 0))
       pygame.display.update()
-      # print(self.clock.get_fps())
+      print(self.clock.get_fps())
       animFrames += self.clock.get_time()
       self.clock.tick(60)
 
